@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -26,7 +26,7 @@ namespace LogoSync.Core.DTOs
         /// <summary>
         /// Fatura kalemleri dizisi.
         /// LINETYPE=0 → malzeme satırı (deep=false)
-        /// LINETYPE=2 → iskonto satırı (deep=true, percent=DISCPER)
+        /// LINETYPE=2 → iskonto satırı (deep=false, percent=DISCPER)
         /// </summary>
         [JsonPropertyName("itemTransactionDTO")]
         public List<SalesInvoiceItemTransaction> ItemTransactionDTO { get; set; } = new List<SalesInvoiceItemTransaction>();
@@ -114,13 +114,13 @@ namespace LogoSync.Core.DTOs
         public bool EInvoice { get; set; } = false;
 
         [JsonPropertyName("eInvoice2")]
-        public bool EInvoice2 { get; set; } = false;
+        public bool EInvoice2 { get; set; } = true;
 
         [JsonPropertyName("eArchive")]
         public bool EArchive { get; set; } = false;
 
         [JsonPropertyName("eArchive2")]
-        public bool EArchive2 { get; set; } = true;
+        public bool EArchive2 { get; set; } = false;
 
         [JsonPropertyName("onlineSalesInvoice")]
         public bool OnlineSalesInvoice { get; set; } = false;
@@ -151,8 +151,9 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("customer2")]
         public string Customer2 { get; set; }
 
-        [JsonPropertyName("trIdentificationNo")]
-        public string TrIdentificationNo { get; set; } = "";
+        /// <summary>Vergi numarası</summary>
+        [JsonPropertyName("taxNo")]
+        public string TaxNo { get; set; } = "";
 
         [JsonPropertyName("totalReportingCurrency")]
         public decimal TotalReportingCurrency { get; set; } = 0;
@@ -187,30 +188,18 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("distributeReverseCharge")]
         public bool DistributeReverseCharge { get; set; } = true;
 
-        [JsonPropertyName("reverseChargeRatePart1")]
-        public decimal ReverseChargeRatePart1 { get; set; } = 2.0m;
-
-        [JsonPropertyName("reverseChargeRatePart2")]
-        public decimal ReverseChargeRatePart2 { get; set; } = 3.0m;
-
-        [JsonPropertyName("deductionRatePart")]
-        public decimal DeductionRatePart { get; set; } = 2.0m;
-
-        [JsonPropertyName("deductionRatePart2")]
-        public decimal DeductionRatePart2 { get; set; } = 3.0m;
-
         /// <summary>Kaynak: CARI_KOD</summary>
         [JsonPropertyName("codeShipTo")]
         public string CodeShipTo { get; set; }
 
-        [JsonPropertyName("sendingMethod")]
-        public int SendingMethod { get; set; } = 2;
+        [JsonPropertyName("scenario2")]
+        public int Scenario2 { get; set; } = 1;
 
         [JsonPropertyName("cashRegisterSlip")]
         public bool CashRegisterSlip { get; set; } = false;
 
         [JsonPropertyName("substitutesDispatchReceipt")]
-        public bool SubstitutesDispatchReceipt { get; set; } = false;
+        public bool SubstitutesDispatchReceipt { get; set; } = true;
 
         [JsonPropertyName("infoSlipType")]
         public int InfoSlipType { get; set; } = 0;
@@ -290,6 +279,9 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("edispatchDetails")]
         public List<object> EdispatchDetails { get; set; } = new List<object>();
 
+        [JsonPropertyName("extensions")]
+        public SalesInvoiceExtensions Extensions { get; set; } = new SalesInvoiceExtensions();
+
         [JsonPropertyName("index")]
         public int Index { get; set; } = 0;
 
@@ -304,12 +296,12 @@ namespace LogoSync.Core.DTOs
     /// <summary>
     /// Fatura satır kalemi.
     /// LINETYPE=0 → Malzeme satırı: deep=false, code=URUN_KODU, quantity=MIKTAR, unitPrice=FIYAT
-    /// LINETYPE=2 → İskonto satırı: deep=true, percent=DISCPER
+    /// LINETYPE=2 → İskonto satırı: deep=false, percent=DISCPER
     /// </summary>
     public class SalesInvoiceItemTransaction
     {
         /// <summary>
-        /// LINETYPE=0 → false (malzeme), LINETYPE=2 → true (iskonto)
+        /// Malzeme ve iskonto satırlarında false
         /// </summary>
         [JsonPropertyName("deep")]
         public bool Deep { get; set; } = false;
@@ -333,7 +325,7 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("dispatchRef")]
         public long DispatchRef { get; set; }
 
-        /// <summary>Kaynak: SIPARIS_SATIR_REF (dispatchTransRef)</summary>
+        /// <summary>Kaynak: IRSALIYE_SATIR_REF (dispatchTransRef)</summary>
         [JsonPropertyName("dispatchTransRef")]
         public long DispatchTransRef { get; set; }
 
@@ -345,9 +337,20 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("code")]
         public string Code { get; set; }
 
+        /// <summary>Kaynak: URUN (ürün açıklaması)</summary>
+        [JsonPropertyName("description")]
+        public string Description { get; set; } = "";
+
+        [JsonPropertyName("variantCode")]
+        public string VariantCode { get; set; } = "";
+
         /// <summary>Kaynak: MIKTAR</summary>
         [JsonPropertyName("quantity")]
         public decimal Quantity { get; set; }
+
+        /// <summary>Birim tipi (29 = ADET)</summary>
+        [JsonPropertyName("unit")]
+        public int Unit { get; set; }
 
         /// <summary>Kaynak: BIRIM</summary>
         [JsonPropertyName("unitCode")]
@@ -356,6 +359,12 @@ namespace LogoSync.Core.DTOs
         /// <summary>Kaynak: FIYAT</summary>
         [JsonPropertyName("unitPrice")]
         public decimal UnitPrice { get; set; }
+
+        [JsonPropertyName("unitCost")]
+        public decimal UnitCost { get; set; } = 0;
+
+        [JsonPropertyName("unitCostIFRS")]
+        public decimal UnitCostIFRS { get; set; } = 0;
 
         [JsonPropertyName("currencyTypeRC")]
         public int CurrencyTypeRC { get; set; } = 1;
@@ -383,6 +392,15 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("netDiscount")]
         public bool NetDiscount { get; set; } = false;
 
+        [JsonPropertyName("netDiscountPercent")]
+        public decimal NetDiscountPercent { get; set; } = 0;
+
+        [JsonPropertyName("netDiscountAmount")]
+        public decimal NetDiscountAmount { get; set; } = 0;
+
+        [JsonPropertyName("netDiscountAmountRC")]
+        public decimal NetDiscountAmountRC { get; set; } = 0;
+
         /// <summary>Kaynak: VATRATE</summary>
         [JsonPropertyName("vatratePercent")]
         public decimal VatratePercent { get; set; }
@@ -390,8 +408,49 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("vatincluded")]
         public bool VatIncluded { get; set; } = false;
 
+        /// <summary>KDV tutarı (Logo tarafından hesaplanır)</summary>
+        [JsonPropertyName("vatamount")]
+        public decimal VatAmount { get; set; } = 0;
+
+        /// <summary>KDV matrahı (Logo tarafından hesaplanır)</summary>
+        [JsonPropertyName("vatbase")]
+        public decimal VatBase { get; set; } = 0;
+
         [JsonPropertyName("gstincluded")]
         public bool GstIncluded { get; set; } = false;
+
+        [JsonPropertyName("cgstrate")]
+        public decimal CgstRate { get; set; } = 0;
+
+        [JsonPropertyName("cgstamount")]
+        public decimal CgstAmount { get; set; } = 0;
+
+        [JsonPropertyName("cgstbase")]
+        public decimal CgstBase { get; set; } = 0;
+
+        [JsonPropertyName("sgstrate")]
+        public decimal SgstRate { get; set; } = 0;
+
+        [JsonPropertyName("sgstamount")]
+        public decimal SgstAmount { get; set; } = 0;
+
+        [JsonPropertyName("sgstbase")]
+        public decimal SgstBase { get; set; } = 0;
+
+        [JsonPropertyName("igstrate")]
+        public decimal IgstRate { get; set; } = 0;
+
+        [JsonPropertyName("igstamount")]
+        public decimal IgstAmount { get; set; } = 0;
+
+        [JsonPropertyName("ugstrate")]
+        public decimal UgstRate { get; set; } = 0;
+
+        [JsonPropertyName("ugstamount")]
+        public decimal UgstAmount { get; set; } = 0;
+
+        [JsonPropertyName("igstbase")]
+        public decimal IgstBase { get; set; } = 0;
 
         /// <summary>Kaynak: TOTAL = MIKTAR * FIYAT</summary>
         [JsonPropertyName("amount")]
@@ -403,12 +462,51 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("amountinFCurrency")]
         public decimal AmountInFCurrency { get; set; } = 0;
 
-        /// <summary>MIKTAR * FIYAT (net tutar)</summary>
+        /// <summary>Net tutar (iskonto sonrası)</summary>
         [JsonPropertyName("netAmount")]
         public decimal NetAmount { get; set; }
 
+        [JsonPropertyName("cessbase")]
+        public decimal CessBase { get; set; } = 0;
+
+        [JsonPropertyName("cessrate")]
+        public decimal CessRate { get; set; } = 0;
+
+        [JsonPropertyName("cesstotal")]
+        public decimal CessTotal { get; set; } = 0;
+
+        [JsonPropertyName("additionalTaxBase")]
+        public decimal AdditionalTaxBase { get; set; } = 0;
+
+        [JsonPropertyName("additionalTaxRatePercent")]
+        public decimal AdditionalTaxRatePercent { get; set; } = 0;
+
+        [JsonPropertyName("additionalTaxAmount")]
+        public decimal AdditionalTaxAmount { get; set; } = 0;
+
+        [JsonPropertyName("additionalTaxAmountRC")]
+        public decimal AdditionalTaxAmountRC { get; set; } = 0;
+
         [JsonPropertyName("costType")]
         public int CostType { get; set; } = -1;
+
+        [JsonPropertyName("transactionAuxCode")]
+        public string TransactionAuxCode { get; set; } = "";
+
+        [JsonPropertyName("transactionAuxCodeDescription")]
+        public string TransactionAuxCodeDescription { get; set; } = "";
+
+        [JsonPropertyName("transactionAuxCode2")]
+        public string TransactionAuxCode2 { get; set; } = "";
+
+        [JsonPropertyName("transactionAuxCodeDescription2")]
+        public string TransactionAuxCodeDescription2 { get; set; } = "";
+
+        [JsonPropertyName("deliveryCode")]
+        public string DeliveryCode { get; set; } = "";
+
+        [JsonPropertyName("commissionPercent")]
+        public decimal CommissionPercent { get; set; } = 0;
 
         /// <summary>Kaynak: SIPARIS_NO</summary>
         [JsonPropertyName("orderSlipNumber")]
@@ -429,6 +527,15 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("purchaseEmployeeSalespersonCode")]
         public string PurchaseEmployeeSalespersonCode { get; set; }
 
+        [JsonPropertyName("outputLogNumber")]
+        public string OutputLogNumber { get; set; } = "";
+
+        [JsonPropertyName("description2")]
+        public string Description2 { get; set; } = "";
+
+        [JsonPropertyName("priceCode")]
+        public string PriceCode { get; set; } = "";
+
         /// <summary>Kaynak: AMBAR</summary>
         [JsonPropertyName("warehouse")]
         public string Warehouse { get; set; }
@@ -439,16 +546,76 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("distributionType2")]
         public int DistributionType2 { get; set; } = 0;
 
+        [JsonPropertyName("contractNo")]
+        public string ContractNo { get; set; } = "";
+
         /// <summary>Kaynak: IRSALIYE_NO</summary>
         [JsonPropertyName("dispatchNo")]
         public string DispatchNo { get; set; }
 
+        [JsonPropertyName("reverseChargeNumerator")]
+        public decimal ReverseChargeNumerator { get; set; } = 0;
+
+        [JsonPropertyName("reverseChargeDenominator")]
+        public decimal ReverseChargeDenominator { get; set; } = 0;
+
+        [JsonPropertyName("deductionNumerator")]
+        public int DeductionNumerator { get; set; } = 0;
+
+        [JsonPropertyName("deductionDenominator")]
+        public int DeductionDenominator { get; set; } = 0;
+
+        [JsonPropertyName("distributionDurationMonth")]
+        public decimal DistributionDurationMonth { get; set; } = 0;
+
+        [JsonPropertyName("deductionCode")]
+        public int DeductionCode { get; set; } = 0;
+
         [JsonPropertyName("foreignTradeType")]
         public int ForeignTradeType { get; set; } = -1;
 
-        /// <summary>MIKTAR * FIYAT</summary>
+        [JsonPropertyName("stoppageRate")]
+        public decimal StoppageRate { get; set; } = 0;
+
+        [JsonPropertyName("stoppageAmount")]
+        public decimal StoppageAmount { get; set; } = 0;
+
+        [JsonPropertyName("stoppageAmountTC")]
+        public decimal StoppageAmountTC { get; set; } = 0;
+
+        [JsonPropertyName("distDiscountAmount")]
+        public decimal DistDiscountAmount { get; set; } = 0;
+
+        [JsonPropertyName("distCostAmount")]
+        public decimal DistCostAmount { get; set; } = 0;
+
+        [JsonPropertyName("beforeDeductionTransTotalVatLC")]
+        public decimal BeforeDeductionTransTotalVatLC { get; set; } = 0;
+
+        [JsonPropertyName("beforeDeductionTransTotalVatRC")]
+        public decimal BeforeDeductionTransTotalVatRC { get; set; } = 0;
+
+        [JsonPropertyName("decreasedTransTotalVatLC")]
+        public decimal DecreasedTransTotalVatLC { get; set; } = 0;
+
+        [JsonPropertyName("decreasedTransTotalVatRC")]
+        public decimal DecreasedTransTotalVatRC { get; set; } = 0;
+
+        [JsonPropertyName("transDiscountValue")]
+        public decimal TransDiscountValue { get; set; } = 0;
+
+        /// <summary>MIKTAR * FIYAT (iskonto öncesi)</summary>
         [JsonPropertyName("applyDiscountTransValue")]
         public decimal ApplyDiscountTransValue { get; set; }
+
+        [JsonPropertyName("applyDiscountTransValueTC")]
+        public decimal ApplyDiscountTransValueTC { get; set; } = 0;
+
+        [JsonPropertyName("applyDiscountTransValueRC")]
+        public decimal ApplyDiscountTransValueRC { get; set; } = 0;
+
+        [JsonPropertyName("vatAmountChanged")]
+        public int VatAmountChanged { get; set; } = 0;
 
         [JsonPropertyName("unitConversion")]
         public decimal UnitConversion { get; set; } = 1.0m;
@@ -456,11 +623,59 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("unitConversion1")]
         public decimal UnitConversion1 { get; set; } = 1.0m;
 
+        [JsonPropertyName("width")]
+        public decimal Width { get; set; } = 0;
+
+        [JsonPropertyName("length")]
+        public decimal Length { get; set; } = 0;
+
+        [JsonPropertyName("height")]
+        public decimal Height { get; set; } = 0;
+
+        [JsonPropertyName("area")]
+        public decimal Area { get; set; } = 0;
+
+        [JsonPropertyName("netVolume")]
+        public decimal NetVolume { get; set; } = 0;
+
+        [JsonPropertyName("grossVolume")]
+        public decimal GrossVolume { get; set; } = 0;
+
+        [JsonPropertyName("netWeight")]
+        public decimal NetWeight { get; set; } = 0;
+
+        [JsonPropertyName("grossWeight")]
+        public decimal GrossWeight { get; set; } = 0;
+
         [JsonPropertyName("lastPurchasePriceCheckbox")]
         public bool LastPurchasePriceCheckbox { get; set; } = false;
 
+        [JsonPropertyName("lastPurchasePrice")]
+        public decimal LastPurchasePrice { get; set; } = 0;
+
+        [JsonPropertyName("imei1")]
+        public string Imei1 { get; set; } = "";
+
+        [JsonPropertyName("imei2")]
+        public string Imei2 { get; set; } = "";
+
+        [JsonPropertyName("macNo")]
+        public string MacNo { get; set; } = "";
+
+        [JsonPropertyName("techDeviceType")]
+        public int TechDeviceType { get; set; } = 0;
+
+        [JsonPropertyName("localityRate")]
+        public decimal LocalityRate { get; set; } = 0;
+
+        [JsonPropertyName("gtipCode")]
+        public string GtipCode { get; set; } = "";
+
+        [JsonPropertyName("tagNo")]
+        public string TagNo { get; set; } = "";
+
         [JsonPropertyName("analysisDimLines")]
-        public List<object> AnalysisDimLines { get; set; } = new List<object>();
+        public List<SalesInvoiceAnalysisDimLine> AnalysisDimLines { get; set; } = new List<SalesInvoiceAnalysisDimLine>();
 
         [JsonPropertyName("slDetailsTransaction")]
         public List<object> SlDetailsTransaction { get; set; } = new List<object>();
@@ -468,11 +683,67 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("medDeviceDetailTransaction")]
         public List<object> MedDeviceDetailTransaction { get; set; } = new List<object>();
 
+        [JsonPropertyName("extensions")]
+        public SalesInvoiceExtensions Extensions { get; set; } = new SalesInvoiceExtensions();
+
         [JsonPropertyName("index")]
         public int Index { get; set; } = 0;
 
         [JsonPropertyName("serializeNulls")]
         public bool SerializeNulls { get; set; } = false;
+    }
+
+    // =========================================================================
+    // analysisDimLines - Analiz Boyut Satırı
+    // =========================================================================
+
+    public class SalesInvoiceAnalysisDimLine
+    {
+        [JsonPropertyName("analysisdimensioncode")]
+        public string AnalysisDimensionCode { get; set; } = "";
+
+        [JsonPropertyName("analysisdimensionDescription")]
+        public string AnalysisDimensionDescription { get; set; } = "";
+
+        [JsonPropertyName("projectcode")]
+        public string ProjectCode { get; set; } = "";
+
+        [JsonPropertyName("projectDescription")]
+        public string ProjectDescription { get; set; } = "";
+
+        [JsonPropertyName("projectactivitycode")]
+        public string ProjectActivityCode { get; set; } = "";
+
+        [JsonPropertyName("projectactivityDescription")]
+        public string ProjectActivityDescription { get; set; } = "";
+
+        [JsonPropertyName("distributionrate")]
+        public decimal DistributionRate { get; set; } = 0;
+
+        [JsonPropertyName("amount")]
+        public decimal Amount { get; set; } = 0;
+
+        [JsonPropertyName("amountRC")]
+        public decimal AmountRC { get; set; } = 0;
+
+        [JsonPropertyName("amountTC")]
+        public decimal AmountTC { get; set; } = 0;
+
+        [JsonPropertyName("index")]
+        public int Index { get; set; } = 0;
+
+        [JsonPropertyName("serializeNulls")]
+        public bool SerializeNulls { get; set; } = false;
+    }
+
+    // =========================================================================
+    // extensions - Eklenti nesnesi
+    // =========================================================================
+
+    public class SalesInvoiceExtensions
+    {
+        [JsonPropertyName("list")]
+        public List<object> List { get; set; } = new List<object>();
     }
 
     // =========================================================================
@@ -531,6 +802,7 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("optionDate")]
         public string OptionDate { get; set; }
 
+        /// <summary>Ödeme gününe kalan gün sayısı</summary>
         [JsonPropertyName("day")]
         public decimal Day { get; set; } = 0;
 
@@ -543,10 +815,8 @@ namespace LogoSync.Core.DTOs
         /// <summary>
         /// KDV dahil toplam tutar.
         /// Hesaplama: SUM(MIKTAR*FIYAT) * (1 + VATRATE/100)
-        /// Excel notu: "LINENET üzerine vatratePercent eklenecek. 100 TL ve KDV %20 ise → 100*1.2=120"
-        /// JSON'a gönderilmiyor — Logo tarafından hesaplanır.
         /// </summary>
-        [JsonIgnore]
+        [JsonPropertyName("amount")]
         public decimal Amount { get; set; }
 
         [JsonPropertyName("status")]

@@ -92,7 +92,7 @@ namespace LogoSync.Core.Mappers
         // =================================================================
         // itemTransactionDTO oluşturma
         // LINETYPE=0 → malzeme satırı (deep=false)
-        // LINETYPE=2 → iskonto satırı (deep=true) — view'dan gelirse veya DISCPER>0 ise
+        // LINETYPE=2 → iskonto satırı (deep=false) — view'dan gelirse veya DISCPER>0 ise
         // =================================================================
 
         private static List<SalesInvoiceItemTransaction> BuildItemTransactions(List<SalesInvoiceDetailDto> rows)
@@ -113,9 +113,11 @@ namespace LogoSync.Core.Mappers
                         OrderTransRef = row.SiparisSatirRef,
                         OrderSlipRef = row.SiparisRef,
                         DispatchRef = row.IrsaliyeRef,
-                        DispatchTransRef = row.SiparisSatirRef,
+                        DispatchTransRef = row.IrsaliyeSatirRef,
                         Code = row.UrunKodu ?? "",
+                        Description = row.Urun ?? "",
                         Quantity = row.Miktar,
+                        Unit = 29,
                         UnitCode = row.Birim ?? "ADET",
                         UnitPrice = row.Fiyat,
                         CurrencyPC = row.FiyatKur,
@@ -133,7 +135,11 @@ namespace LogoSync.Core.Mappers
                             ? ""
                             : row.SatirOdemePlani,
                         PurchaseEmployeeSalespersonCode = row.SatisElemani ?? "",
-                        Warehouse = row.Ambar ?? "01.7.7"
+                        Warehouse = row.Ambar ?? "01.7.7",
+                        AnalysisDimLines = new List<SalesInvoiceAnalysisDimLine>
+                        {
+                            CreateDefaultAnalysisDimLine()
+                        }
                     };
                     transactions.Add(itemLine);
 
@@ -154,37 +160,55 @@ namespace LogoSync.Core.Mappers
         }
 
         /// <summary>
-        /// İskonto satırı oluşturur (type=2, deep=true)
+        /// İskonto satırı oluşturur (type=2, deep=false)
         /// </summary>
         private static SalesInvoiceItemTransaction CreateDiscountLine(SalesInvoiceDetailDto row)
         {
             return new SalesInvoiceItemTransaction
             {
-                Deep = true,
+                Deep = false,
                 Type = 2,
-                LogicalRef = 0,
+                LogicalRef = row.IrsaliyeSatirRef,
                 SourceRef = 0,
-                OrderTransRef = 0,
-                OrderSlipRef = 0,
-                DispatchRef = 0,
-                DispatchTransRef = 0,
-                Code = row.UrunKodu ?? "",
+                OrderTransRef = row.SiparisSatirRef,
+                OrderSlipRef = row.SiparisRef,
+                DispatchRef = row.IrsaliyeRef,
+                DispatchTransRef = row.IrsaliyeSatirRef,
+                Code = "",
+                Description = "",
                 Quantity = 0,
+                Unit = 0,
                 UnitCode = "",
                 UnitPrice = 0,
                 CurrencyPC = 0,
-                VatratePercent = row.VatRate,
+                VatratePercent = 0,
                 Percent = row.DiscPer,
-                Amount = 0,
+                Amount = row.DistDisc,
                 NetAmount = 0,
                 ApplyDiscountTransValue = 0,
-                OrderSlipNumber = "",
-                OrderDate = "",
-                DispatchNo = "",
+                OrderSlipNumber = row.SiparisNo ?? "",
+                OrderDate = row.SiparisTarihi.HasValue
+                    ? ToLogoDateTimeFormat(row.SiparisTarihi.Value)
+                    : "",
+                DispatchNo = row.IrsaliyeNo ?? "",
                 PaymentPlan = "",
                 PurchaseEmployeeSalespersonCode = row.SatisElemani ?? "",
-                Warehouse = row.Ambar ?? "01.7.7"
+                Warehouse = row.Ambar ?? "01.7.7",
+                UnitConversion = 0,
+                UnitConversion1 = 0,
+                AnalysisDimLines = new List<SalesInvoiceAnalysisDimLine>
+                {
+                    CreateDefaultAnalysisDimLine()
+                }
             };
+        }
+
+        /// <summary>
+        /// Varsayılan analiz boyut satırı oluşturur
+        /// </summary>
+        private static SalesInvoiceAnalysisDimLine CreateDefaultAnalysisDimLine()
+        {
+            return new SalesInvoiceAnalysisDimLine();
         }
 
         // =================================================================
@@ -237,7 +261,12 @@ namespace LogoSync.Core.Mappers
 
             // Ödeme tarihi: ilk satırdan
             var paymentDate = materialRows.First().OdemeTarihi ?? DateTime.Now;
-            var paymentDateLogo = ToLogoDateFormat(paymentDate);
+            var paymentDateLogo = ToLogoDateTimeFormat(paymentDate);
+            var paymentDateLogoFlat = ToLogoDateFormat(paymentDate);
+
+            // Ödeme gün sayısı hesapla (bugünden ödeme tarihine)
+            decimal dayCount = (decimal)(paymentDate.Date - DateTime.Now.Date).TotalDays;
+            if (dayCount < 0) dayCount = 0;
 
             return new List<SalesInvoiceInstallment>
             {
@@ -245,7 +274,8 @@ namespace LogoSync.Core.Mappers
                 {
                     PaymentNo = "1",
                     Date = paymentDateLogo,
-                    OptionDate = paymentDateLogo,
+                    OptionDate = paymentDateLogoFlat,
+                    Day = dayCount,
                     DiscountValidation = paymentDateLogo,
                     Amount = Math.Round(totalWithVat, 2)
                 }
