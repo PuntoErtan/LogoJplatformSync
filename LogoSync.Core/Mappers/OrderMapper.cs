@@ -88,7 +88,7 @@ namespace LogoSync.Core.Mappers
 
         /// <summary>
         /// PUNTO detay satırlarından sipariş satırlarını oluşturur.
-        /// Her malzeme satırı (type=0) ardından ISK3, ISK4, ISK_KAMPANYA, ISK_CEP iskonto satırları (type=2) gelir.
+        /// Her malzeme satırı (type=0) ardından ISK4, ISK_KAMPANYA, ISK_CEP iskonto satırları (type=2) gelir.
         /// </summary>
         private static List<OrderLineDto> BuildPuntoOrderLines(
             List<PuntoOrderDetailDto> details,
@@ -129,19 +129,15 @@ namespace LogoSync.Core.Mappers
                     SerializeNulls = false
                 });
 
-                // 2. ISK3 iskonto satırı (type=2)
-                if (detail.Isk3.HasValue && detail.Isk3.Value > 0)
-                    lines.Add(CreateDiscountLine(detail.Isk3.Value, salespersonCode, warehouse));
-
-                // 3. ISK4 iskonto satırı (type=2)
+                // 2. ISK4 iskonto satırı (type=2)
                 if (detail.Isk4.HasValue && detail.Isk4.Value > 0)
                     lines.Add(CreateDiscountLine(detail.Isk4.Value, salespersonCode, warehouse));
 
-                // 4. ISK_KAMPANYA iskonto satırı (type=2)
+                // 3. ISK_KAMPANYA iskonto satırı (type=2)
                 if (detail.IskKampanya.HasValue && detail.IskKampanya.Value > 0)
                     lines.Add(CreateDiscountLine(detail.IskKampanya.Value, salespersonCode, warehouse));
 
-                // 5. ISK_CEP iskonto satırı (type=2)
+                // 4. ISK_CEP iskonto satırı (type=2)
                 if (detail.IskCep.HasValue && detail.IskCep.Value > 0)
                     lines.Add(CreateDiscountLine(detail.IskCep.Value, salespersonCode, warehouse));
             }
@@ -237,17 +233,7 @@ namespace LogoSync.Core.Mappers
 
                 lines.Add(materialLine);
 
-                // 2. ISK_ISK3 iskonto satırı (type=2) - sadece > 0 ise
-                if (detail.DiscountIsk3.HasValue && detail.DiscountIsk3.Value > 0)
-                {
-                    lines.Add(CreateDiscountLine(
-                        detail.DiscountIsk3.Value,
-                        order.SalespersonCode,
-                        order.Warehouse
-                    ));
-                }
-
-                // 3. ISK_ISK4 iskonto satırı (type=2) - sadece > 0 ise
+                // 2. ISK_ISK4 iskonto satırı (type=2) - sadece > 0 ise
                 if (detail.DiscountIsk4.HasValue && detail.DiscountIsk4.Value > 0)
                 {
                     lines.Add(CreateDiscountLine(
@@ -257,7 +243,7 @@ namespace LogoSync.Core.Mappers
                     ));
                 }
 
-                // 4. ISK_KAMPANYA iskonto satırı (type=2) - sadece > 0 ise
+                // 3. ISK_KAMPANYA iskonto satırı (type=2) - sadece > 0 ise
                 if (detail.DiscountCampaign.HasValue && detail.DiscountCampaign.Value > 0)
                 {
                     lines.Add(CreateDiscountLine(
@@ -267,7 +253,7 @@ namespace LogoSync.Core.Mappers
                     ));
                 }
 
-                // 5. ISK_CEP iskonto satırı (type=2) - sadece > 0 ise
+                // 4. ISK_CEP iskonto satırı (type=2) - sadece > 0 ise
                 if (detail.DiscountMobile.HasValue && detail.DiscountMobile.Value > 0)
                 {
                     lines.Add(CreateDiscountLine(
