@@ -815,8 +815,9 @@ namespace LogoSync.Core.DTOs
         /// <summary>
         /// KDV dahil toplam tutar.
         /// Hesaplama: SUM(MIKTAR*FIYAT) * (1 + VATRATE/100)
+        /// Logo irsaliye referanslarından otomatik hesaplar — gönderilmez.
         /// </summary>
-        [JsonPropertyName("amount")]
+        [JsonIgnore]
         public decimal Amount { get; set; }
 
         [JsonPropertyName("status")]
