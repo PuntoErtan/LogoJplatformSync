@@ -4,8 +4,10 @@ using System.Collections.Generic;
 namespace LogoSync.Core.DTOs
 {
     /// <summary>
-    /// JGDB05.SRC_Orders tablosundaki sipariş başlık verisi
+    /// [Obsolete] JGDB05.SRC_Orders tablosundaki sipariş başlık verisi.
+    /// Yeni akışta PuntoOrderDto doğrudan kullanılmaktadır.
     /// </summary>
+    [Obsolete("SRC_Orders ara tablosu kaldırıldı. PuntoOrderDto ve OrderMapper.MapFromPunto kullanın.")]
     public class OrderDto
     {
         public long Id { get; set; }
@@ -22,6 +24,8 @@ namespace LogoSync.Core.DTOs
         public string OrderNote { get; set; }
         public string SpecialCode { get; set; }
         public string PaymentPlan { get; set; }
+        public string TradingGroup { get; set; }
+        public string DocumentTracking { get; set; }
         public bool IsSynced { get; set; }
         public DateTime CreatedAt { get; set; }
         public int? PuntoId { get; set; }
@@ -30,8 +34,10 @@ namespace LogoSync.Core.DTOs
     }
 
     /// <summary>
-    /// JGDB05.SRC_OrderDetails tablosundaki sipariş satır verisi
+    /// [Obsolete] JGDB05.SRC_OrderDetails tablosundaki sipariş satır verisi.
+    /// Yeni akışta PuntoOrderDetailDto doğrudan kullanılmaktadır.
     /// </summary>
+    [Obsolete("SRC_Orders ara tablosu kaldırıldı. PuntoOrderDetailDto ve OrderMapper.MapFromPunto kullanın.")]
     public class OrderDetailDto
     {
         public long Id { get; set; }

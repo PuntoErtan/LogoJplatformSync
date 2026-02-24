@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace LogoSync.Core.DTOs
 {
     /// <summary>
-    /// Logo J-Platform REST API /orders endpoint request modeli
+    /// Logo J-Platform REST API /salesOrder endpoint request modeli
     /// </summary>
     public class JplatformOrderSlip
     {
@@ -45,6 +45,14 @@ namespace LogoSync.Core.DTOs
 
         [JsonPropertyName("code4")]
         public string Code4 { get; set; }
+
+        [JsonPropertyName("tradingGroup")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string TradingGroup { get; set; }
+
+        [JsonPropertyName("documentTracking")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string DocumentTracking { get; set; }
 
         [JsonPropertyName("prePayment")]
         public bool PrePayment { get; set; } = false;
@@ -94,6 +102,9 @@ namespace LogoSync.Core.DTOs
     /// </summary>
     public class OrderLineDto
     {
+        [JsonPropertyName("orderAnalysisDTO")]
+        public List<OrderAnalysisDto> OrderAnalysisDTO { get; set; } = new List<OrderAnalysisDto>();
+
         [JsonPropertyName("deep")]
         public bool Deep { get; set; } = false;
 
@@ -113,30 +124,55 @@ namespace LogoSync.Core.DTOs
         [JsonPropertyName("undeliveredQuantity")]
         public decimal UndeliveredQuantity { get; set; }
 
+        [JsonPropertyName("unit")]
+        public int Unit { get; set; }
+
         [JsonPropertyName("unitCode")]
         public string UnitCode { get; set; }
 
+        [JsonPropertyName("unitPrice")]
+        public decimal UnitPrice { get; set; }
+
         [JsonPropertyName("currencyTypeRC")]
         public int CurrencyTypeRC { get; set; } = 1;
-
-        // --- Malzeme satırı (type=0) alanları ---
-
-        [JsonPropertyName("vatincluded")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public bool VatIncluded { get; set; } = false;
-
-        [JsonPropertyName("amount")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public decimal Amount { get; set; }
-
-        // --- İskonto satırı (type=2) alanları ---
 
         [JsonPropertyName("percent")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public decimal Percent { get; set; }
 
+        [JsonPropertyName("vatratePercent")]
+        public decimal VatratePercent { get; set; }
+
+        [JsonPropertyName("vatincluded")]
+        public bool VatIncluded { get; set; } = false;
+
+        [JsonPropertyName("vatamount")]
+        public decimal VatAmount { get; set; }
+
+        [JsonPropertyName("netDiscount")]
+        public bool NetDiscount { get; set; } = false;
+
+        [JsonPropertyName("gstincluded")]
+        public bool GstIncluded { get; set; } = false;
+
+        [JsonPropertyName("igstrate")]
+        public decimal IgstRate { get; set; }
+
+        [JsonPropertyName("igstamount")]
+        public decimal IgstAmount { get; set; }
+
+        [JsonPropertyName("amount")]
+        public decimal Amount { get; set; }
+
+        [JsonPropertyName("netAmount")]
+        public decimal NetAmount { get; set; }
+
         [JsonPropertyName("additionalTaxIncluded")]
         public bool AdditionalTaxIncluded { get; set; } = false;
+
+        [JsonPropertyName("procurementDate")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ProcurementDate { get; set; }
 
         [JsonPropertyName("reserved")]
         public bool Reserved { get; set; } = false;
@@ -149,6 +185,60 @@ namespace LogoSync.Core.DTOs
 
         [JsonPropertyName("warehouse")]
         public string Warehouse { get; set; }
+
+        [JsonPropertyName("subjecttoInspection")]
+        public bool SubjectToInspection { get; set; } = false;
+
+        [JsonPropertyName("medDeviceDetailsTransactions")]
+        public List<object> MedDeviceDetailsTransactions { get; set; } = new List<object>();
+
+        [JsonPropertyName("appliedCampaings")]
+        public List<object> AppliedCampaings { get; set; } = new List<object>();
+
+        [JsonPropertyName("extensions")]
+        public ExtensionsDto Extensions { get; set; } = new ExtensionsDto();
+
+        [JsonPropertyName("index")]
+        public int Index { get; set; } = 0;
+
+        [JsonPropertyName("serializeNulls")]
+        public bool SerializeNulls { get; set; } = false;
+    }
+
+    /// <summary>
+    /// Sipariş satır analiz boyutları
+    /// </summary>
+    public class OrderAnalysisDto
+    {
+        [JsonPropertyName("analysisdimensioncode")]
+        public string AnalysisDimensionCode { get; set; } = "";
+
+        [JsonPropertyName("analysisdimensionDescription")]
+        public string AnalysisDimensionDescription { get; set; } = "";
+
+        [JsonPropertyName("projectcode")]
+        public string ProjectCode { get; set; } = "";
+
+        [JsonPropertyName("projectDescription")]
+        public string ProjectDescription { get; set; } = "";
+
+        [JsonPropertyName("projectactivitycode")]
+        public string ProjectActivityCode { get; set; } = "";
+
+        [JsonPropertyName("projectactivityDescription")]
+        public string ProjectActivityDescription { get; set; } = "";
+
+        [JsonPropertyName("distributionrate")]
+        public decimal DistributionRate { get; set; }
+
+        [JsonPropertyName("amount")]
+        public decimal Amount { get; set; }
+
+        [JsonPropertyName("amountRC")]
+        public decimal AmountRC { get; set; }
+
+        [JsonPropertyName("amountTC")]
+        public decimal AmountTC { get; set; }
 
         [JsonPropertyName("index")]
         public int Index { get; set; } = 0;

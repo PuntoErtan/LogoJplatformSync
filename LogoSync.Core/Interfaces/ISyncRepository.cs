@@ -19,6 +19,7 @@ namespace LogoSync.Core.Interfaces
         Task<long> InsertCashReceiptAsync(CashReceiptDto receipt);
 
         // Order
+        [Obsolete("SRC_Orders ara tablosu kaldırıldı. Worker artık doğrudan PUNTO'dan okuyor.")]
         Task<OrderDto> GetOrderWithDetailsAsync(long orderId);
         Task<string> GetPaymentPlanByCustomerAsync(string customerCode);
     }

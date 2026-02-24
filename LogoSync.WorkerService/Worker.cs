@@ -88,9 +88,9 @@ namespace LogoSync.WorkerService
                     if (_chequeReceiptEnabled)
                         await ProcessPendingRecordsAsync("ChequeReceipt", stoppingToken);
 
-                    // Siparişleri işle
+                    // Siparişleri işle (doğrudan PUNTO'dan)
                     if (_orderEnabled)
-                        await ProcessPendingRecordsAsync("Order", stoppingToken);
+                        await ProcessPuntoOrdersAsync(stoppingToken);
 
                     // Sanal POS → Cari Hesap Fişi (ArpSlip) işle
                     if (_sanalPosEnabled)
@@ -133,8 +133,6 @@ namespace LogoSync.WorkerService
                 bool result;
                 if (entityType == "ChequeReceipt")
                     result = await ProcessChequeRecordAsync(record);
-                else if (entityType == "Order")
-                    result = await ProcessOrderRecordAsync(record);
                 else
                     result = await ProcessCashRecordAsync(record);
 
@@ -247,83 +245,129 @@ namespace LogoSync.WorkerService
         }
 
         /// <summary>
-        /// Sipariş işle (Order)
-        /// SRC_Orders + SRC_OrderDetails → Logo /salesOrder
+        /// Sipariş işle — Doğrudan PUNTO'dan Logo'ya
+        /// ERYAZ_SIPARISLER + ERYAZ_SIPARIS_DETAY → Logo /salesOrder
+        /// Başarılı: ERYAZ_SIPARISLER.AKTARIM = 50
+        /// Başarısız: AKTARIM NULL kalır, sonraki döngüde tekrar denenir
         /// </summary>
-        private async Task<bool> ProcessOrderRecordAsync(SyncQueueItem record)
+        private async Task ProcessPuntoOrdersAsync(CancellationToken cancellationToken)
         {
             try
             {
-                _logger.LogDebug("Processing Order {Id}...", record.Id);
+                var pendingOrders = await _puntoRepository.GetPendingOrdersAsync(_batchSize);
 
-                await _repository.UpdateSyncStatusAsync(record.Id, SyncStatus.Processing);
-
-                // 1. EntityId'den OrderId al
-                if (!long.TryParse(record.EntityId, out var orderId))
+                if (pendingOrders == null || pendingOrders.Count == 0)
                 {
-                    _logger.LogError("Order {Id}: Invalid EntityId '{EntityId}'", record.Id, record.EntityId);
-                    await _repository.UpdateSyncStatusAsync(record.Id, SyncStatus.Failed, "Invalid EntityId");
-                    return false;
+                    _logger.LogDebug("No pending PUNTO order records");
+                    return;
                 }
 
-                // 2. Header + Details birlikte getir
-                var order = await _repository.GetOrderWithDetailsAsync(orderId);
-                if (order == null)
+                _logger.LogInformation("Processing {Count} orders from PUNTO...", pendingOrders.Count);
+
+                var batchGuid = Guid.NewGuid().ToString();
+                int successCount = 0, failCount = 0;
+
+                foreach (var puntoOrder in pendingOrders)
                 {
-                    _logger.LogError("Order {Id}: OrderId {OrderId} not found in SRC_Orders", record.Id, orderId);
-                    await _repository.UpdateSyncStatusAsync(record.Id, SyncStatus.Failed, "Order not found");
-                    return false;
+                    if (cancellationToken.IsCancellationRequested)
+                        break;
+
+                    try
+                    {
+                        // 1. Detay satırlarını getir
+                        var details = await _puntoRepository.GetOrderDetailsAsync(puntoOrder.FisNo);
+
+                        if (details == null || details.Count == 0)
+                        {
+                            _logger.LogWarning("Order PuntoId={PuntoId} FisNo={FisNo}: No detail lines, skipping",
+                                puntoOrder.Id, puntoOrder.FisNo);
+                            failCount++;
+                            continue;
+                        }
+
+                        // 2. DEPO'dan Warehouse ve OrgUnit türet
+                        var warehouse = DeriveWarehouse(puntoOrder.Depo);
+                        var orgUnit = DeriveOrderOrgUnit(puntoOrder.Depo);
+
+                        // 3. Temsilci kodunu dönüştür
+                        var salespersonCode = _salespersonHelper.Resolve(puntoOrder.TemsilciKodu);
+
+                        // 4. Cari kodundan ödeme planını getir
+                        var paymentPlan = await _repository.GetPaymentPlanByCustomerAsync(puntoOrder.CariKodu);
+
+                        _logger.LogInformation(
+                            "Order PuntoId={PuntoId} FisNo={FisNo}, Customer={Customer}, Lines={LineCount}, Warehouse={Warehouse}, PaymentPlan={PaymentPlan}",
+                            puntoOrder.Id, puntoOrder.FisNo, puntoOrder.CariKodu,
+                            details.Count, warehouse, paymentPlan);
+
+                        // 5. Logo J-Platform formatına dönüştür
+                        var orderSlip = OrderMapper.MapFromPunto(
+                            puntoOrder, details, warehouse, orgUnit, salespersonCode, paymentPlan);
+
+                        var requestJson = JsonSerializer.Serialize(orderSlip, _jsonOptions);
+                        _logger.LogDebug("Order PuntoId={PuntoId} FisNo={FisNo} - Request: {Json}",
+                            puntoOrder.Id, puntoOrder.FisNo, requestJson);
+
+                        // 6. Logo'ya gönder
+                        var response = await _apiClient.SendOrderAsync(orderSlip);
+
+                        if (response.Success)
+                        {
+                            _logger.LogInformation(
+                                "Order PuntoId={PuntoId} FisNo={FisNo}: Synced. TransactionNo={TxNo}",
+                                puntoOrder.Id, puntoOrder.FisNo, response.TransactionNo);
+
+                            // 7. PUNTO'da AKTARIM=50 olarak işaretle
+                            await _puntoRepository.MarkOrderAsTransferredAsync(puntoOrder.Id, batchGuid);
+                            successCount++;
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "Order PuntoId={PuntoId} FisNo={FisNo}: Failed. Error={Error}",
+                                puntoOrder.Id, puntoOrder.FisNo, response.ErrorMessage);
+                            failCount++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "Order PuntoId={PuntoId} FisNo={FisNo}: Processing error",
+                            puntoOrder.Id, puntoOrder.FisNo);
+                        failCount++;
+                    }
                 }
 
-                if (order.Details == null || order.Details.Count == 0)
-                {
-                    _logger.LogError("Order {Id}: OrderId {OrderId} has no detail lines", record.Id, orderId);
-                    await _repository.UpdateSyncStatusAsync(record.Id, SyncStatus.Failed, "No order details");
-                    return false;
-                }
-
-                _logger.LogInformation("Order {Id}: FisNo={FisNo}, Customer={Customer}, Lines={LineCount}",
-                    record.Id, order.FisNo, order.CustomerCode, order.Details.Count);
-
-                // 3. Cari kodundan ödeme planını getir
-                var paymentPlan = await _repository.GetPaymentPlanByCustomerAsync(order.CustomerCode);
-                if (!string.IsNullOrEmpty(paymentPlan))
-                {
-                    order.PaymentPlan = paymentPlan;
-                    _logger.LogDebug("Order {Id}: PaymentPlan={PaymentPlan}", record.Id, paymentPlan);
-                }
-
-                // 4. Logo J-Platform formatına dönüştür
-                var orderSlip = OrderMapper.MapToJplatformOrder(order);
-                var requestJson = JsonSerializer.Serialize(orderSlip, _jsonOptions);
-                await _repository.LogAsync(record.Id, "INFO", "Sending Order to jPlatform", requestJson);
-
-                // 5. Logo'ya gönder
-                var response = await _apiClient.SendOrderAsync(orderSlip);
-
-                if (response.Success)
-                {
-                    var refValue = response.TransactionNo ?? response.LogicalRef?.ToString();
-                    await _repository.UpdateSyncStatusAsync(record.Id, SyncStatus.Success, null, refValue);
-                    await _repository.LogAsync(record.Id, "INFO", $"Order Success. TransactionNo: {response.TransactionNo}", requestJson, response.Data);
-                    _logger.LogInformation("Order {Id} synced. TransactionNo: {TransNo}", record.Id, response.TransactionNo);
-                    return true;
-                }
-                else
-                {
-                    await _repository.UpdateSyncStatusAsync(record.Id, SyncStatus.Failed, response.ErrorMessage);
-                    await _repository.LogAsync(record.Id, "ERROR", response.ErrorMessage, requestJson, response.Data);
-                    _logger.LogWarning("Order {Id} failed: {Error}", record.Id, response.ErrorMessage);
-                    return false;
-                }
+                _logger.LogInformation(
+                    "PUNTO order batch completed. Success: {Success}, Failed: {Failed}",
+                    successCount, failCount);
             }
             catch (Exception ex)
             {
-                await _repository.UpdateSyncStatusAsync(record.Id, SyncStatus.Failed, ex.Message);
-                await _repository.LogAsync(record.Id, "ERROR", ex.Message);
-                _logger.LogError(ex, "Error processing Order {Id}", record.Id);
-                return false;
+                _logger.LogError(ex, "PUNTO order processing error");
             }
+        }
+
+        /// <summary>
+        /// DEPO alanından Warehouse türetir: "7" → "01.7.7", "42" → "01.42.42"
+        /// </summary>
+        private static string DeriveWarehouse(string depo)
+        {
+            if (string.IsNullOrEmpty(depo))
+                return null;
+            var d = depo.Trim();
+            return $"01.{d}.{d}";
+        }
+
+        /// <summary>
+        /// DEPO alanından OrgUnit türetir: "7" → "01.7", "42" → "01.42"
+        /// </summary>
+        private static string DeriveOrderOrgUnit(string depo)
+        {
+            if (string.IsNullOrEmpty(depo))
+                return null;
+            var d = depo.Trim();
+            return $"01.{d}";
         }
 
         /// <summary>

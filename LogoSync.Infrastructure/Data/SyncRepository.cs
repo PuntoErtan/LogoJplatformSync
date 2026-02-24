@@ -196,6 +196,8 @@ namespace LogoSync.Infrastructure.Data
                     OrgUnit = reader.IsDBNull(reader.GetOrdinal("OrgUnit")) ? null : reader.GetString(reader.GetOrdinal("OrgUnit")),
                     OrderNote = reader.IsDBNull(reader.GetOrdinal("OrderNote")) ? null : reader.GetString(reader.GetOrdinal("OrderNote")),
                     SpecialCode = reader.IsDBNull(reader.GetOrdinal("SpecialCode")) ? null : reader.GetString(reader.GetOrdinal("SpecialCode")),
+                    TradingGroup = HasColumn(reader, "TradingGroup") && !reader.IsDBNull(reader.GetOrdinal("TradingGroup")) ? reader.GetString(reader.GetOrdinal("TradingGroup")) : null,
+                    DocumentTracking = HasColumn(reader, "DocumentTracking") && !reader.IsDBNull(reader.GetOrdinal("DocumentTracking")) ? reader.GetString(reader.GetOrdinal("DocumentTracking")) : null,
                     IsSynced = reader.GetBoolean(reader.GetOrdinal("IsSynced")),
                     CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
                     PuntoId = reader.IsDBNull(reader.GetOrdinal("PuntoId")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("PuntoId"))
@@ -248,6 +250,20 @@ namespace LogoSync.Infrastructure.Data
 
             var result = await command.ExecuteScalarAsync();
             return result != null && result != DBNull.Value ? result.ToString() : null;
+        }
+
+        #endregion
+
+        #region Helpers
+
+        private static bool HasColumn(System.Data.IDataReader reader, string columnName)
+        {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                if (reader.GetName(i).Equals(columnName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
         }
 
         #endregion
